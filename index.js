@@ -159,11 +159,6 @@ const bookTennisLoop = async () => {
   const warmUpTime = config.warmUpTime * 1000;
   const stopInterval = config.stopInterval * 1000;
   const intervalVariability = config.intervalVariability * 1000;
-  const bookTennisTimeout = config.bookTennisTimeout * 1000;
-  // enforce bookTennisTimeout to be less than interval
-  if (bookTennisTimeout > interval) {
-    throw new Error('bookTennisTimeout should be less than interval');
-  }
 
   const targetTime = new Date();
   const [targetHour, targetMinute, targetSecond] = config.targetTime.split(':').map(Number);
@@ -173,8 +168,8 @@ const bookTennisLoop = async () => {
   const stopTime = new Date(targetTime.getTime() + stopInterval);
 
   while (true) {
-    // log time
-    console.log(new Date().toLocaleString())
+    // log time day hour minute second
+    console.log(dayjs().format() + " - " + dayjs().format('dddd') + " - " + dayjs().format('HH:mm:ss'))
     const now = new Date();
     if (now >= stopTime) {
       break;
@@ -182,24 +177,18 @@ const bookTennisLoop = async () => {
 
     if (now >= startTime) {
       try {
-        const reservation = await Promise.race([
-          bookTennis(),
-          new Promise((resolve, reject) => setTimeout(() => reject(new Error('Timeout')), bookTennisTimeout))
-        ]);
+        const reservation = await bookTennis();
         if (reservation) {
           break;
         }
-      } catch (error) {
-        console.error(error);
+      } catch (e) {
+        console.log(e);
       }
     }
 
     await new Promise((resolve) => setTimeout(resolve, interval + Math.floor(Math.random() * 2 * intervalVariability) - intervalVariability));
   }
 };
-
-
-
 
 bookTennisLoop();
 

@@ -34,10 +34,9 @@
       "firstName": "Firstname2"
     }
   ],
-  "interval": 5,
-  "targetTime": "8:00:00",
-  "warmUpTime": 10,
-  "stopInterval": 30,
-  "intervalVariability": 0.5,
-  "bookTennisTimeout": 5.5
+  "interval": 1.8,
+  "targetTime": "08:00:00",
+  "warmUpTime": 4.5,
+  "stopInterval": 20,
+  "intervalVariability": 0.4
 }
