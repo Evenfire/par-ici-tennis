@@ -38,6 +38,8 @@ const bookTennis = async () => {
       await page.waitForSelector(`.tokens-suggestions-list-element >> text="${location}"`)
       await page.click(`.tokens-suggestions-list-element >> text="${location}"`)
 
+      console.log("debug 1")
+
       // select date
       await page.click('#when')
       const date = dayjs(config.date, 'D/MM/YYYY')
@@ -47,11 +49,15 @@ const bookTennis = async () => {
 
       await page.click('#rechercher')
 
+      console.log("debug 2")
+
       // wait until the results page is fully loaded before continue
       await page.waitForLoadState('domcontentloaded')
 
       hoursLoop:
       for (const hour of config.hours) {
+        // log the current hour with a prefix debug 3
+        console.log("debug 3 - " + hour)
         const dateDeb = `[datedeb="${date.format('YYYY/MM/DD')} ${hour}:00:00"]`
         if (await page.$(dateDeb)) {
           if (await page.isHidden(dateDeb)) {
@@ -60,6 +66,8 @@ const bookTennis = async () => {
 
           const slots = await page.$$(dateDeb)
           for (const slot of slots) {
+            // log the current slot with a prefix debug 4
+            console.log("debug 4 - " + slot)
             const bookSlotButton = `[courtid="${await slot.getAttribute('courtid')}"]${dateDeb}`
             const [priceType, courtType] = await (
               await (await page.$(`.price-description:left-of(${bookSlotButton})`)).innerHTML()
@@ -86,17 +94,28 @@ const bookTennis = async () => {
         await page.waitForLoadState('domcontentloaded')
       }
 
+      console.log(config.players.length)
 
       for (const [i, player] of config.players.entries()) {
+        // log the current player with a prefix debug 5
+        console.log("debug 5 - " + player.firstName + " " + player.lastName)
+        console.log(i + " " + player.firstName + " " + player.lastName)
         if (i > 0 && i < config.players.length) {
+          console.log("debug 5.2")
           await page.click('.addPlayer')
         }
         await page.waitForSelector(`[name="player${i + 1}"]`)
         await page.fill(`[name="player${i + 1}"] >> nth=0`, player.lastName)
         await page.fill(`[name="player${i + 1}"] >> nth=1`, player.firstName)
+        console.log("debug 5.1")
       }
 
+      console.log("debug 5.5")
+
       await page.keyboard.press('Enter')
+
+      // log debug 6
+      console.log("debug 6")
 
       await page.waitForSelector('#order_select_payment_form #paymentMode', { state: 'attached' })
       const paymentMode = await page.$('#order_select_payment_form #paymentMode')
@@ -106,9 +125,13 @@ const bookTennis = async () => {
       })
       await paymentMode.fill('existingTicket')
 
+      console.log("debug 7")
+
       const submit = await page.$('#order_select_payment_form #envoyer')
       submit.evaluate(el => el.classList.remove('hide'))
       await submit.click()
+
+      console.log("debug 8")
 
       await page.waitForSelector('.confirmReservation')
 
@@ -126,6 +149,57 @@ const bookTennis = async () => {
   }
 
   await browser.close()
+  return true
 }
 
-bookTennis()
+// bookTennis()
+
+const bookTennisLoop = async () => {
+  const interval = config.interval * 1000;
+  const warmUpTime = config.warmUpTime * 1000;
+  const stopInterval = config.stopInterval * 1000;
+  const intervalVariability = config.intervalVariability * 1000;
+  const bookTennisTimeout = config.bookTennisTimeout * 1000;
+  // enforce bookTennisTimeout to be less than interval
+  if (bookTennisTimeout > interval) {
+    throw new Error('bookTennisTimeout should be less than interval');
+  }
+
+  const targetTime = new Date();
+  const [targetHour, targetMinute, targetSecond] = config.targetTime.split(':').map(Number);
+  targetTime.setHours(targetHour, targetMinute, targetSecond, 0);
+
+  const startTime = new Date(targetTime.getTime() - warmUpTime);
+  const stopTime = new Date(targetTime.getTime() + stopInterval);
+
+  while (true) {
+    // log time
+    console.log(new Date().toLocaleString())
+    const now = new Date();
+    if (now >= stopTime) {
+      break;
+    }
+
+    if (now >= startTime) {
+      try {
+        const reservation = await Promise.race([
+          bookTennis(),
+          new Promise((resolve, reject) => setTimeout(() => reject(new Error('Timeout')), bookTennisTimeout))
+        ]);
+        if (reservation) {
+          break;
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval + Math.floor(Math.random() * 2 * intervalVariability) - intervalVariability));
+  }
+};
+
+
+
+
+bookTennisLoop();
+
